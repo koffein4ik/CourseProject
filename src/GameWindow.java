@@ -67,8 +67,10 @@ public class GameWindow extends Application {
             }
             width = Integer.parseInt(val1);
             fin.close();
+            height *= offset;
+            width *= offset;
             mainField = new GameField(height, width);
-            mainField.fromFile(levelPath);
+            mainField.fromFile(levelPath, offset);
         }
         catch (Exception ex)
         {
@@ -82,28 +84,28 @@ public class GameWindow extends Application {
                     case 10:
                     {
                         ImageView blockIv = new ImageView(wall);
-                        blockIv.setLayoutY(/*offset*/ + i * offset);
-                        blockIv.setLayoutX(j * offset);
+                        blockIv.setLayoutY(i /* offset*/);
+                        blockIv.setLayoutX(j /* offset*/);
                         addedObjects.add(blockIv);
                         break;
                     }
-                    case 0:
+                    case 101:
                     {
                         ImageView grassIv = new ImageView(grass);
-                        grassIv.setLayoutY(/*offset*/ +i * offset);
-                        grassIv.setLayoutX(j * offset);
+                        grassIv.setLayoutY(i /* offset*/);
+                        grassIv.setLayoutX(j /* offset*/);
                         addedObjects.add(grassIv);
                         break;
                     }
                     case 1:
                     {
                         ImageView grassIv = new ImageView(grass);
-                        grassIv.setLayoutY(/*offset*/ +i * offset);
-                        grassIv.setLayoutX(j * offset);
+                        grassIv.setLayoutY(i /* offset*/);
+                        grassIv.setLayoutX(j /* offset*/);
                         addedObjects.add(grassIv);
                         ImageView person1 = new ImageView(pers1);
-                        person1.setLayoutY(/*offset*/ +i * offset);
-                        person1.setLayoutX(j * offset);
+                        person1.setLayoutY(i /* offset*/);
+                        person1.setLayoutX(j /* offset*/);
                         addedObjects.add(person1);
                     }
                 }
@@ -177,12 +179,16 @@ class myThread extends Thread
                     System.out.println();
                 }
                 System.out.println("----------------------------");*/
-                while (objInput.available() > 0)
+                this.objectsOnField.clear();
+                int size = objInput.readInt();
+                System.out.println(size);
+                for(int i = 0; i < size; i++)
                 {
                      ObjToTransfer obj1 = (ObjToTransfer)objInput.readObject();
                      System.out.println(obj1.id);
                      System.out.println(obj1.x);
                      System.out.println(obj1.y);
+                     this.objectsOnField.add(obj1);
                 }
                 Thread.sleep(1000);
             }

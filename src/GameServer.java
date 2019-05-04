@@ -38,8 +38,10 @@ public class GameServer
 
             System.out.println(ex.getMessage());
         }
+        height *= offset;
+        width *= offset;
         GameField mainField = new GameField(height, width);
-        mainField.fromFile(path);
+        mainField.fromFile(path, offset);
         String command;
         String playerNumber;
         try
@@ -65,6 +67,8 @@ public class GameServer
                 }
                 if(!(command.equals("GetField")))
                     processCommand(mainField, playerNumber, command);
+                objectsOnFiled = mainField.getObjectPositions();
+                objOut.writeInt(objectsOnFiled.size());
                 for (int i = 0; i < objectsOnFiled.size(); i++)
                 {
                     objOut.writeObject(objectsOnFiled.get(i));
@@ -203,7 +207,7 @@ class GameField {
         return gf1;
     }
 
-    public GameField fromFile(String path) {
+    public GameField fromFile(String path, int offset) {
 
         try (FileInputStream fin = new FileInputStream(path)) {
             byte[] buffer = new byte[fin.available()];
@@ -224,14 +228,14 @@ class GameField {
                         this.field[i][j] = Byte.parseByte(val);
                         val = "";
                         k++;
-                        i++;
+                        i += offset;
                         j = 0;
                         break;
                     }
                     case 32:
                     {
                         this.field[i][j] = Byte.parseByte(val);
-                        j++;
+                        j += offset;
                         val = "";
                         continue;
                     }
@@ -247,6 +251,24 @@ class GameField {
             System.out.println(ex.getMessage());
         }
         return null;
+    }
+
+    public ArrayList<ObjToTransfer> getObjectPositions()
+    {
+        ArrayList<ObjToTransfer> result = new ArrayList<ObjToTransfer>();
+        for (int i = 0; i < this.height; i++)
+        {
+            for (int j = 0; j < this.width; j++)
+            {
+                int currFieldValue = this.field[i][j];
+                if ((currFieldValue != 101) && (currFieldValue != 0) && (currFieldValue) != 10)
+                {
+                    ObjToTransfer obj1 = new ObjToTransfer(currFieldValue, j, i);
+                    result.add(obj1);
+                }
+            }
+        }
+        return result;
     }
 }
 
