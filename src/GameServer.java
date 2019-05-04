@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.Socket;
 import java.net.ServerSocket;
+import java.util.ArrayList;
 
 public class GameServer
 {
@@ -8,13 +9,37 @@ public class GameServer
 
     public static void main(String args[])
     {
+        int offset = 16;
+        String path = "E:\\CourseProject\\src\\Levels\\level2.txt";
         final int port = 11000;
-        GameField mainField = new GameField(10, 20);
-        byte a = 1;
-        byte block = 10;
-        mainField.setFieldDot(5,5, a);
-        mainField.setFieldDot(0,0, block);
-        mainField.setFieldDot(1, 0, block);
+        int width = 0;
+        int height = 0;
+        ArrayList<ObjToTransfer> objectsOnFiled = new ArrayList<>();
+        try (FileInputStream fin = new FileInputStream(path)) {
+            byte[] buffer = new byte[fin.available()];
+            fin.read(buffer, 0, fin.available());
+            int i = 0;
+            String val1 = "";
+            while (buffer[i] != 32)
+            {
+                val1 += (char)buffer[i];
+                i++;
+            }
+            i++;
+            height = Integer.parseInt(val1);
+            val1 = "";
+            while (buffer[i] != 13)
+            {
+                val1 += (char)buffer[i];
+                i++;
+            }
+            width = Integer.parseInt(val1);
+        } catch (IOException ex) {
+
+            System.out.println(ex.getMessage());
+        }
+        GameField mainField = new GameField(height, width);
+        mainField.fromFile(path);
         String command;
         String playerNumber;
         try
@@ -23,15 +48,29 @@ public class GameServer
             while(true)
             {
                 Socket clientSocket = server.accept();
-                DataInputStream in = new DataInputStream(clientSocket.getInputStream());
-                DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
-                playerNumber = in.readUTF();
-                command = in.readUTF();
+                ObjectOutputStream objOut = new ObjectOutputStream(clientSocket.getOutputStream());
+                ObjectInputStream objIn = new ObjectInputStream(clientSocket.getInputStream());
+                //DataInputStream in = new DataInputStream(clientSocket.getInputStream());
+                //DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
+                playerNumber = objIn.readUTF();
+                command = objIn.readUTF();
                 System.out.println(playerNumber);
                 System.out.println(command);
-                processCommand(mainField, playerNumber, command);
-                out.write(mainField.getOneDimensionalField(), 0, mainField.getOneDimensionalField().length);
-                out.flush();
+                if (command.equals("GetLevelPath"))
+                {
+                    objOut.writeUTF(path);
+                    objOut.flush();
+                    System.out.println("Sent");
+                    continue;
+                }
+                if(!(command.equals("GetField")))
+                    processCommand(mainField, playerNumber, command);
+                for (int i = 0; i < objectsOnFiled.size(); i++)
+                {
+                    objOut.writeObject(objectsOnFiled.get(i));
+                }
+                //out.write(mainField.getOneDimensionalField(), 0, mainField.getOneDimensionalField().length);
+                objOut.flush();
             }
         }
         catch (Exception ex)
@@ -65,6 +104,7 @@ public class GameServer
                 gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x + 1, currCoord.y, playerNumb);
                 return;
             }
+            default: return;
         }
     }
 }
@@ -161,6 +201,52 @@ class GameField {
             }
         }
         return gf1;
+    }
+
+    public GameField fromFile(String path) {
+
+        try (FileInputStream fin = new FileInputStream(path)) {
+            byte[] buffer = new byte[fin.available()];
+            fin.read(buffer, 0, fin.available());
+            int i = 0;
+            int j = 0;
+            int k = 0;
+            while ((buffer[k] != 13) && (k < buffer.length))
+            {
+                k++;
+            }
+            k += 2;
+            String val = "";
+            for (k = k; k < buffer.length; k++)
+            {
+                switch (buffer[k]) {
+                    case 13: {
+                        this.field[i][j] = Byte.parseByte(val);
+                        val = "";
+                        k++;
+                        i++;
+                        j = 0;
+                        break;
+                    }
+                    case 32:
+                    {
+                        this.field[i][j] = Byte.parseByte(val);
+                        j++;
+                        val = "";
+                        continue;
+                    }
+                    default:
+                    {
+                        val += (char)buffer[k];
+                    }
+                }
+            }
+            this.field[i][j] = Byte.parseByte(val);
+        } catch (IOException ex) {
+
+            System.out.println(ex.getMessage());
+        }
+        return null;
     }
 }
 

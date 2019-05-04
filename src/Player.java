@@ -59,7 +59,7 @@ public class Player {
             {
                 for (int j = 0; j < 20; j++)
                 {
-                    System.out.print(gameField[counter]);
+                    System.out.print(gameField[counter] + " ");
                     counter++;
                 }
                 System.out.println();
