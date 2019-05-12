@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.Socket;
 import java.net.ServerSocket;
 import java.util.ArrayList;
+import java.util.List;
 
 public class GameServer
 {
@@ -10,7 +11,8 @@ public class GameServer
     public static void main(String args[])
     {
         int offset = 16;
-        String path = "E:\\CourseProject\\src\\Levels\\level2.txt";
+        int shift = 1;
+        String path = "E:\\CourseProject\\src\\Levels\\level1.txt";
         final int port = 11000;
         int width = 0;
         int height = 0;
@@ -66,7 +68,7 @@ public class GameServer
                     continue;
                 }
                 if(!(command.equals("GetField")))
-                    processCommand(mainField, playerNumber, command);
+                    processCommand(mainField, playerNumber, command, offset);
                 objectsOnFiled = mainField.getObjectPositions();
                 objOut.writeInt(objectsOnFiled.size());
                 for (int i = 0; i < objectsOnFiled.size(); i++)
@@ -83,29 +85,29 @@ public class GameServer
         }
     }
 
-    private static void processCommand(GameField gameField, String playerNumber, String command)
+    private static void processCommand(GameField gameField, String playerNumber, String command, int offset)
     {
         byte playerNumb = Byte.parseByte(playerNumber);
         PlayerCoord currCoord = new PlayerCoord();
         currCoord = currCoord.getPlayerCoord(gameField, playerNumb);
         switch (command) {
             case "UP": {
-                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x, currCoord.y - 1, playerNumb);
+                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x, currCoord.y - 1, playerNumb, offset);
                 return;
             }
             case "DOWN":
             {
-                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x, currCoord.y + 1, playerNumb);
+                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x, currCoord.y + 1, playerNumb, offset);
                 return;
             }
             case "LEFT":
             {
-                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x - 1, currCoord.y, playerNumb);
+                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x - 1, currCoord.y, playerNumb, offset);
                 return;
             }
             case "RIGHT":
             {
-                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x + 1, currCoord.y, playerNumb);
+                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x + 1, currCoord.y, playerNumb, offset);
                 return;
             }
             default: return;
@@ -144,25 +146,55 @@ class GameField {
         }
     }
 
-    public Boolean isCoordExist(int x, int y)
+    public Boolean isCoordExist(int x, int y, int offset)
     {
-        return !((x >= width) || (y >= height) || (x < 0) || (y < 0));
+        return !((x + offset >= width) || (y + offset >= height) || (x < 0) || (y < 0)); // Мб надо добавить - 1
     }
 
-    public void replaceDot(int oldX, int oldY, int newX, int newY, byte value)
+    public void replaceDot(int oldX, int oldY, int newX, int newY, byte value, int offset)
     {
-        if (isCoordEmpty(newX, newY))
+        if (isCoordEmpty(newX, newY, offset, value))
         {
-            this.field[oldY][oldX] = 0;
+            this.field[oldY][oldX] = 0; // Заменить на ID травы
             this.field[newY][newX] = value;
         }
     }
 
-    public Boolean isCoordEmpty(int x, int y)
+    public Boolean isCoordEmpty(int x, int y, int offset, byte value)
     {
-        if (isCoordExist(x, y))
+        List<Byte> correctValues = new ArrayList<>();
+        correctValues.add((byte)0);
+        for (byte i = 41; i < 51; i++)
         {
-            return (this.field[y][x] == 0);
+            correctValues.add(i);
+        }
+        correctValues.add(value);
+        if (isCoordExist(x, y, offset))
+        {
+            for (int i = x; i < x + offset; i++)
+            {
+               if (!(correctValues.contains(this.field[y][i]))) return false;
+            }
+
+            for (int i = y; i < y + offset; i++)
+            {
+                //if (!((this.field[i][x] > 40) && (this.field[i][x] < 51) || (this.field[i][x] == 0))) return false;
+                if (!(correctValues.contains(this.field[i][x]))) return false;
+            }
+
+            for (int i = x; i < x + offset; i++)
+            {
+                //if (!((this.field[y + offset - 1][i] > 40) && (this.field[y + offset - 1][i] < 51) || (this.field[y + offset - 1][i] == 0))) return false;
+                if (!(correctValues.contains(this.field[y + offset - 1][i]))) return false;
+            }
+
+            for (int i = y; i < y + offset; i++)
+            {
+                //if (!((this.field[i][x + offset - 1] > 40) && (this.field[i][x + offset - 1] < 51) || (this.field[i][x + offset - 1] == 0))) return false;
+                if (!(correctValues.contains(this.field[i][x + offset - 1]))) return false;
+            }
+            return true;
+            //return (((this.field[y + offset][x + offset] > 40) && (this.field[y + offset][x + offset] < 51)) || (this.field[y + offset][x + offset] == 0)); // Мб надо добавить - 1
         }
         return false;
     }
@@ -261,7 +293,7 @@ class GameField {
             for (int j = 0; j < this.width; j++)
             {
                 int currFieldValue = this.field[i][j];
-                if ((currFieldValue != 101) && (currFieldValue != 0) && (currFieldValue) != 10)
+                if (((currFieldValue > 100) && (currFieldValue < 133)) || (currFieldValue == 1)) //УБРАТЬ Единицу
                 {
                     ObjToTransfer obj1 = new ObjToTransfer(currFieldValue, j, i);
                     result.add(obj1);

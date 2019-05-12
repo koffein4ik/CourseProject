@@ -1,5 +1,7 @@
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.event.EventHandler;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -11,8 +13,16 @@ import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Timer;
+import java.util.TimerTask;
+
 
 public class GameWindow extends Application {
+
+    public static int gl_height;
+    public static int gl_width;
+    public static GameField gl_mainfield;
+    public static ArrayList<ObjToTransfer> gl_objectsOnField = new ArrayList<>();
 
     public static void main(String[] args) {
         launch(args);
@@ -35,6 +45,7 @@ public class GameWindow extends Application {
         Image pers1 = new Image(f3.toURI().toString());
         Player pl1 = new Player("John", 1);
         ArrayList<javafx.scene.Node> addedObjects = new ArrayList<>();
+        ArrayList<javafx.scene.Node> fieldMovingObjects = new ArrayList<>();
         String levelPath = "";
         try
         {
@@ -71,16 +82,20 @@ public class GameWindow extends Application {
             width *= offset;
             mainField = new GameField(height, width);
             mainField.fromFile(levelPath, offset);
+            gl_height = height;
+            gl_width = width;
         }
         catch (Exception ex)
         {
             System.out.println(ex.toString());
         }
-        for (int i = 0; i < height; i++)
+        gl_mainfield = mainField;
+        // Отрисовка поля из файла
+        for (int i = 0; i < gl_height; i++)
         {
-            for (int j = 0; j < width; j++)
+            for (int j = 0; j < gl_width; j++)
             {
-                switch (mainField.getField()[i][j]) {
+                switch (gl_mainfield.getField()[i][j]) {
                     case 10:
                     {
                         ImageView blockIv = new ImageView(wall);
@@ -89,7 +104,7 @@ public class GameWindow extends Application {
                         addedObjects.add(blockIv);
                         break;
                     }
-                    case 101:
+                    case 41:
                     {
                         ImageView grassIv = new ImageView(grass);
                         grassIv.setLayoutY(i /* offset*/);
@@ -99,20 +114,125 @@ public class GameWindow extends Application {
                     }
                     case 1:
                     {
-                        ImageView grassIv = new ImageView(grass);
-                        grassIv.setLayoutY(i /* offset*/);
-                        grassIv.setLayoutX(j /* offset*/);
-                        addedObjects.add(grassIv);
-                        ImageView person1 = new ImageView(pers1);
-                        person1.setLayoutY(i /* offset*/);
-                        person1.setLayoutX(j /* offset*/);
-                        addedObjects.add(person1);
+//                        ImageView grassIv = new ImageView(grass);
+//                        grassIv.setLayoutY(i /* offset*/);
+//                        grassIv.setLayoutX(j /* offset*/);
+//                        addedObjects.add(grassIv);
+//                        ImageView person1 = new ImageView(pers1);
+//                        person1.setLayoutY(i /* offset*/);
+//                        person1.setLayoutX(j /* offset*/);
+//                        addedObjects.add(person1);
                     }
                 }
             }
         }
-        myThread Jthread = new myThread("Jthread", mainField, objectsOnFiled);
+//        Timer timer = new Timer();
+//        timer.scheduleAtFixedRate(new TimerTask() {
+//            @Override
+//            public void run() {
+//                System.out.print("I would be called every 2 seconds");
+//                root.getChildren().remove(fieldMovingObjects);
+//                fieldMovingObjects.clear();
+//                for (int i = 0; i < gl_objectsOnField.size(); i++)
+//                {
+//                    System.out.println("Object id " + gl_objectsOnField.get(i).id);
+//                    System.out.println("Object x "+ gl_objectsOnField.get(i).x);
+//                    System.out.println("Object y " + gl_objectsOnField.get(i).y);
+//                    if (gl_objectsOnField.get(i).id == 1)
+//                    {
+//                        ImageView person1 = new ImageView(pers1);
+//                        person1.setLayoutY(gl_objectsOnField.get(i).x /* offset*/);
+//                        person1.setLayoutX(gl_objectsOnField.get(i).y /* offset*/);
+//                        fieldMovingObjects.add(person1);
+//                        //root.getChildren().add(person1);
+//                        //Отдельный список, в котором будут объекты на поле
+//                    }
+//                }
+//                //root.getChildren().addAll(fieldMovingObjects);
+//            }
+//        }, 0, 2000);
+        Thread thread1 = new Thread(new Runnable() {
+            @Override
+            public void run()
+            {
+                while(true)
+                {
+                    Platform.runLater(new Runnable() {
+                        @Override
+                        public void run()
+                        {
+                            root.getChildren().clear();
+                            addedObjects.clear();
+                            for (int i = 0; i < gl_height; i++)
+                            {
+                                for (int j = 0; j < gl_width; j++)
+                                {
+                                    switch (gl_mainfield.getField()[i][j]) {
+                                        case 10:
+                                        {
+                                            ImageView blockIv = new ImageView(wall);
+                                            blockIv.setLayoutY(i /* offset*/);
+                                            blockIv.setLayoutX(j /* offset*/);
+                                            addedObjects.add(blockIv);
+                                            break;
+                                        }
+                                        case 41:
+                                        {
+                                            ImageView grassIv = new ImageView(grass);
+                                            grassIv.setLayoutY(i /* offset*/);
+                                            grassIv.setLayoutX(j /* offset*/);
+                                            addedObjects.add(grassIv);
+                                            break;
+                                        }
+                                        case 1:
+                                        {
+                                            ImageView grassIv = new ImageView(grass);
+                                            grassIv.setLayoutY(i /* offset*/);
+                                            grassIv.setLayoutX(j /* offset*/);
+                                            addedObjects.add(grassIv);
+                //                        ImageView person1 = new ImageView(pers1);
+                //                        person1.setLayoutY(i /* offset*/);
+                //                        person1.setLayoutX(j /* offset*/);
+                //                        addedObjects.add(person1);
+                                        }
+                                    }
+                                }
+                            }
+                            //root.getChildren().remove(fieldMovingObjects);
+                            root.getChildren().addAll(addedObjects);
+                            fieldMovingObjects.clear();
+                            for (int i = 0; i < gl_objectsOnField.size(); i++)
+                            {
+//                                System.out.println("Object id " + gl_objectsOnField.get(i).id);
+//                                System.out.println("Object x "+ gl_objectsOnField.get(i).x);
+//                                System.out.println("Object y " + gl_objectsOnField.get(i).y);
+                                if (gl_objectsOnField.get(i).id == 1)
+                                {
+                                    ImageView person1 = new ImageView(pers1);
+                                    person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                    person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                    fieldMovingObjects.add(person1);
+                                    //root.getChildren().add(person1);
+                                    //Отдельный список, в котором будут объекты на поле
+                                }
+                            }
+                            root.getChildren().addAll(fieldMovingObjects);
+                        }
+                    });
+                    try {
+                        Thread.sleep(10);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.out.println(ex.toString());
+                    }
+                }
+            }
+        });
+        thread1.start();
+        myThread Jthread = new myThread("Jthread", gl_objectsOnField);
         Jthread.start();
+
         scene.setOnKeyTyped(new EventHandler<KeyEvent>() {
             public void handle(KeyEvent ke) {
                 switch (ke.getCharacter())
@@ -125,8 +245,20 @@ public class GameWindow extends Application {
             }
         });
         root.getChildren().addAll(addedObjects);
+        //root.getChildren().addAll(fieldObjects);
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+
+    void updateAddedObjects(GameField mainfield)
+    {
+        for (int i = 0; i < gl_height; i++)
+        {
+            for (int j = 0; j < gl_width; j++)
+            {
+
+            }
+        }
     }
 
 }
@@ -143,17 +275,18 @@ class mapThread extends Thread
 
 class myThread extends Thread
 {
-    GameField mainfield;
     ArrayList<ObjToTransfer> objectsOnField = new ArrayList<>();
-    public myThread(String name, GameField field, ArrayList<ObjToTransfer> objOnField)
+    ArrayList<ObjToTransfer> globalObjectsOnField;
+    public myThread(String name, ArrayList<ObjToTransfer> gl_ObjectsOnField)
     {
         super(name);
-        this.mainfield = field;
-        this.objectsOnField = objOnField;
+        this.globalObjectsOnField = gl_ObjectsOnField;
     }
 
     public void run()
     {
+        File f3 = new File("src/Pictures/pers1.png");
+        Image pers1 = new Image(f3.toURI().toString());
         try {
             while(true) {
                 Socket clientSocket = new Socket("127.0.0.1", 11000);
@@ -181,16 +314,32 @@ class myThread extends Thread
                 System.out.println("----------------------------");*/
                 this.objectsOnField.clear();
                 int size = objInput.readInt();
-                System.out.println(size);
+                //System.out.println(size);
+                GameWindow.gl_objectsOnField.clear();
                 for(int i = 0; i < size; i++)
                 {
                      ObjToTransfer obj1 = (ObjToTransfer)objInput.readObject();
-                     System.out.println(obj1.id);
-                     System.out.println(obj1.x);
-                     System.out.println(obj1.y);
+//                     System.out.println("Object id " + obj1.id);
+//                     System.out.println("Object x "+ obj1.x);
+//                     System.out.println("Object y " + obj1.y);
                      this.objectsOnField.add(obj1);
+                     GameWindow.gl_objectsOnField.add(obj1);
                 }
-                Thread.sleep(1000);
+                //globalObjectsOnField.clear();
+                //globalObjectsOnField = objectsOnField;
+                //GameWindow.gl_objectsOnField = objectsOnField;
+                /*imgToPaintOnField.clear();
+                for (int i = 0; i < objectsOnField.size(); i++)
+                {
+                    if (objectsOnField.get(i).id == 1)
+                    {
+                        ImageView person1 = new ImageView(pers1);
+                        person1.setLayoutX(objectsOnField.get(i).x);
+                        person1.setLayoutY(objectsOnField.get(i).y);
+                        imgToPaintOnField.add(person1);
+                    }
+                }*/
+                Thread.sleep(10);
             }
         }
         catch (Exception ex)

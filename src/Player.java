@@ -1,5 +1,7 @@
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 public class Player {
@@ -7,8 +9,8 @@ public class Player {
     int playerhealth;
     int playermodel;
     Socket clientSocket;
-    DataInputStream in;
-    DataOutputStream out;
+    ObjectOutputStream out;
+    ObjectInputStream in;
 
     public Player(String name, int playermodel)
     {
@@ -46,8 +48,8 @@ public class Player {
         try
         {
             this.clientSocket = new Socket("127.0.0.1", 11000);
-            this.in = new DataInputStream(clientSocket.getInputStream());
-            this.out = new DataOutputStream(clientSocket.getOutputStream());
+            this.out = new ObjectOutputStream(clientSocket.getOutputStream());
+            this.in = new ObjectInputStream(clientSocket.getInputStream());
             out.writeUTF("1"); // Изменить на playername
             out.flush();
             out.writeUTF(command);
@@ -55,7 +57,7 @@ public class Player {
             byte gameField[] = new byte[10 * 20];
             in.read(gameField);
             int counter = 0;
-            for (int i = 0; i < 10; i++)
+            /*for (int i = 0; i < 10; i++)
             {
                 for (int j = 0; j < 20; j++)
                 {
@@ -64,7 +66,7 @@ public class Player {
                 }
                 System.out.println();
             }
-            System.out.println("----------------------------");
+            System.out.println("----------------------------");*/
         }
         catch (Exception ex)
         {
