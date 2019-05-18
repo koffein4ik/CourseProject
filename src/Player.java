@@ -8,15 +8,17 @@ public class Player {
     String playername;
     int playerhealth;
     int playermodel;
+    byte playerId;
     Socket clientSocket;
     ObjectOutputStream out;
     ObjectInputStream in;
 
-    public Player(String name, int playermodel)
+    public Player(String name, int playermodel, byte id)
     {
         this.playername = name;
         this.playermodel = playermodel;
         this.playerhealth = 100;
+        this.playerId = id;
     }
 
     public String getPlayername() {
@@ -51,7 +53,7 @@ public class Player {
             this.out = new ObjectOutputStream(clientSocket.getOutputStream());
             this.in = new ObjectInputStream(clientSocket.getInputStream());
             //out.writeUTF("101"); // Изменить на playername
-            out.writeByte(101);
+            out.writeByte(this.playerId);
             out.flush();
             out.writeUTF(command);
             out.flush();

@@ -5,6 +5,7 @@ public class ObjToTransfer implements Serializable {
     public int x;
     public int y;
     public String lastmove = "";
+    public String viewDirection = "";
 
     public ObjToTransfer(int id, int x, int y)
     {

@@ -26,6 +26,11 @@ public class GameServer
         byte startMonsterId = 112;
         monsters = generateMonsters(2, startMonsterId);
         Map<Byte, String> objLastMoves = new HashMap<>();
+        Map<Byte, String> objViewDirection = new HashMap<>();
+        for(byte i = 100; i < 127; i++)
+        {
+            objViewDirection.put(i, "RIGHT");
+        }
         try (FileInputStream fin = new FileInputStream(path)) {
             byte[] buffer = new byte[fin.available()];
             fin.read(buffer, 0, fin.available());
@@ -69,7 +74,9 @@ public class GameServer
                 ObjectInputStream objIn = new ObjectInputStream(clientSocket.getInputStream());
                 for(int i = 0; i < monsters.size(); i++)
                 {
-                    processCommand(mainField, monsters.get(i).id, monsters.get(i).makeRandomMove(), offset, objLastMoves);
+                    processCommand(mainField, monsters.get(i).id, monsters.get(i).makeRandomMove(), offset, objLastMoves, true, objViewDirection);
+                    detectCollisions(monsters.get(i).id, mainField, offset);
+
                 }
                 //DataInputStream in = new DataInputStream(clientSocket.getInputStream());
                 //DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
@@ -83,7 +90,7 @@ public class GameServer
                     objOut.writeUTF(path);
                     //objOut.flush();
                     System.out.println("Sent");
-                    objectsOnFiled = mainField.getObjectPositions(objLastMoves);
+                    objectsOnFiled = mainField.getObjectPositions(objLastMoves, objViewDirection);
                     int startID = 101;
                     boolean idGenerated = false;
                     while (!(idGenerated))
@@ -99,7 +106,7 @@ public class GameServer
                             }
                         }
                     }
-                    objOut.writeInt(startID);
+                    objOut.writeByte(startID);
                     objOut.flush();
                     for (int i = 0; i < emptyCoordinates.size(); i++)
                     {
@@ -112,8 +119,8 @@ public class GameServer
                     }
                 }
                 if(!(command.equals("GetField")))
-                    processCommand(mainField, playerNumber, command, offset, objLastMoves);
-                objectsOnFiled = mainField.getObjectPositions(objLastMoves);
+                    processCommand(mainField, playerNumber, command, offset, objLastMoves, false, objViewDirection);
+                objectsOnFiled = mainField.getObjectPositions(objLastMoves, objViewDirection);
                 objOut.writeInt(objectsOnFiled.size());
                 for (int i = 0; i < objectsOnFiled.size(); i++)
                 {
@@ -130,7 +137,7 @@ public class GameServer
         }
     }
 
-    private static void processCommand(GameField gameField, byte playerId, String command, int offset, Map<Byte, String> objLastMoves)
+    private static void processCommand(GameField gameField, byte playerId, String command, int offset, Map<Byte, String> objLastMoves, Boolean isMonster, Map<Byte, String> objViewDirection)
     {
         //byte playerNumb = Byte.parseByte(playerNumber);
         byte playerNumb = playerId;
@@ -139,24 +146,61 @@ public class GameServer
         switch (command) {
             case "UP": {
                 gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x, currCoord.y - 1, playerNumb, offset, objLastMoves);
+                objViewDirection.replace(playerNumb, "UP");
                 return;
             }
             case "DOWN":
             {
                 gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x, currCoord.y + 1, playerNumb, offset, objLastMoves);
+                objViewDirection.replace(playerNumb, "DOWN");
                 return;
             }
             case "LEFT":
             {
                 gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x - 1, currCoord.y, playerNumb, offset, objLastMoves);
+                objViewDirection.replace(playerNumb, "LEFT");
                 return;
             }
             case "RIGHT":
             {
                 gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x + 1, currCoord.y, playerNumb, offset, objLastMoves);
+                objViewDirection.replace(playerNumb, "RIGHT");
                 return;
             }
+            case "SHOOT":
+            {
+                playerShoot(playerNumb, objViewDirection.get(playerNumb), gameField, offset);
+                objLastMoves.replace(playerNumb, "SHOOT");
+            }
             default: return;
+        }
+    }
+
+    public static void playerShoot(byte playerId, String viewDirection, GameField mainField, int offset)
+    {
+        PlayerCoord plCoord = new PlayerCoord(0, 0);
+        plCoord = plCoord.getPlayerCoord(mainField, playerId);
+        PlayerCoord monsterCoord1 = new PlayerCoord(0,0);
+        monsterCoord1 = monsterCoord1.getPlayerCoord(mainField, 112);
+        PlayerCoord monsterCoord2 = new PlayerCoord(0,0);
+        monsterCoord2 = monsterCoord2.getPlayerCoord(mainField, 112);
+        switch (viewDirection)
+        {
+            case "RIGHT":
+            {
+                for(int i = plCoord.x; i < mainField.getWidth(); i++)
+                {
+                    for(int j = plCoord.y - (offset / 2); j < plCoord.y + (offset / 2); j++)
+                    {
+                        if (mainField.getField()[j][i] > (byte)111)
+                        {
+                            System.out.println("Got you");
+                            return;
+                        }
+                        if ((mainField.getField()[j][i] >= (byte)10) && (mainField.getField()[j][i] < (byte)41)) return;
+                    }
+                }
+            }
         }
     }
 
@@ -199,6 +243,37 @@ public class GameServer
             }
         }
         return result;
+    }
+
+    public static int detectCollisions(byte monsterId, GameField mainField, int offset)
+    {
+        PlayerCoord monsterCoord = new PlayerCoord(0, 0);
+        monsterCoord = monsterCoord.getPlayerCoord(mainField, monsterId);
+        int startX = monsterCoord.x;
+        int startY = monsterCoord.y;
+        byte plStartId = 100;
+        byte plEndId = 112;
+        for (int i = startX - offset; i <= startX + offset; i++)
+        {
+            if((mainField.getField()[startY - offset][i] > plStartId) && (mainField.getField()[startY - offset][i] < plEndId))
+                System.out.println("COLLISION");
+        }
+        for (int i = startY - offset; i <= startY + offset; i++)
+        {
+            if((mainField.getField()[i][startX - offset] > plStartId) && (mainField.getField()[i][startX - offset] < plEndId))
+                System.out.println("COLLISION");
+        }
+        for (int i = startX - offset; i <= startX + offset; i++)
+        {
+            if((mainField.getField()[startY + offset][i] > plStartId) && (mainField.getField()[startY + offset][i] < plEndId))
+                System.out.println("COLLISION");
+        }
+        for (int i = startY - offset; i <= startY + offset; i++)
+        {
+            if((mainField.getField()[i][startX + offset] > plStartId) && (mainField.getField()[i][startX + offset] < 112))
+                System.out.println("COLLISION");
+        }
+        return 0;
     }
 }
 
@@ -318,6 +393,35 @@ class GameField {
                 //if (!((this.field[i][x + offset - 1] > 40) && (this.field[i][x + offset - 1] < 51) || (this.field[i][x + offset - 1] == 0))) return false;
                 if (!(correctValues.contains(this.field[i][x + offset - 1]))) return false;
             }
+
+            for (int i = y - offset + 1; i < y + offset - 1; i++)
+            {
+                if (i < 0) return false;
+                //if (!((this.field[i][x + offset - 1] > 40) && (this.field[i][x + offset - 1] < 51) || (this.field[i][x + offset - 1] == 0))) return false;
+                if (!(correctValues.contains(this.field[i][x - offset + 1]))) return false;
+            }
+            for (int i = x - offset + 1; i < x + offset - 1; i++)
+            {
+                if (i < 0) return false;
+                //if (!((this.field[i][x + offset - 1] > 40) && (this.field[i][x + offset - 1] < 51) || (this.field[i][x + offset - 1] == 0))) return false;
+                if (!(correctValues.contains(this.field[y - offset + 1][i]))) return false;
+            }
+
+            for (int i = x - offset + 1; i < x + offset - 1; i++)
+            {
+                if (i < 0) return false;
+                //if (!((this.field[i][x + offset - 1] > 40) && (this.field[i][x + offset - 1] < 51) || (this.field[i][x + offset - 1] == 0))) return false;
+                if (!(correctValues.contains(this.field[y + offset - 1][i]))) return false;
+            }
+
+            for (int i = y - offset + 1; i < y + offset - 1; i++)
+            {
+                if (i < 0) return false;
+                //if (!((this.field[i][x + offset - 1] > 40) && (this.field[i][x + offset - 1] < 51) || (this.field[i][x + offset - 1] == 0))) return false;
+                if (!(correctValues.contains(this.field[i][x + offset - 1]))) return false;
+            }
+
+
             return true;
             //return (((this.field[y + offset][x + offset] > 40) && (this.field[y + offset][x + offset] < 51)) || (this.field[y + offset][x + offset] == 0)); // Мб надо добавить - 1
         }
@@ -413,7 +517,7 @@ class GameField {
         return emptySquares;
     }
 
-    public ArrayList<ObjToTransfer> getObjectPositions(Map<Byte, String> objLastMove)
+    public ArrayList<ObjToTransfer> getObjectPositions(Map<Byte, String> objLastMove, Map<Byte, String> objViewDirection)
     {
         ArrayList<ObjToTransfer> result = new ArrayList<ObjToTransfer>();
         for (int i = 0; i < this.height; i++)
@@ -427,10 +531,13 @@ class GameField {
                     if (objLastMove.containsKey(currFieldValue))
                     {
                         obj1.lastmove = objLastMove.get(currFieldValue);
+                        obj1.viewDirection = objLastMove.get(currFieldValue);
+                        objViewDirection.replace(currFieldValue, objLastMove.get(currFieldValue));
                     }
                     else
                     {
                         obj1.lastmove = "STAND";
+                        obj1.viewDirection = objViewDirection.get(currFieldValue);
                     }
                     result.add(obj1);
                 }

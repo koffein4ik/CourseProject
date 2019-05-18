@@ -29,6 +29,7 @@ public class GameWindow extends Application {
     public static ArrayList<javafx.scene.Node> animations = new ArrayList<>();
     public static ArrayList<Animation> anim = new ArrayList<>();
     public static int animationOffset = 0;
+    public static Player pl1;
 
     public static void main(String[] args) {
         launch(args);
@@ -39,7 +40,7 @@ public class GameWindow extends Application {
         int offset = 32;
         int height = 1;
         int width = 1;
-        int playerID;
+        byte playerID;
         ArrayList<ObjToTransfer> objectsOnFiled = new ArrayList<>();
         GameField mainField = new GameField(1, 1);
         Pane root = new Pane();
@@ -57,7 +58,7 @@ public class GameWindow extends Application {
         File f6 = new File("src/Pictures/monster.png");
         Image monster = new Image(f6.toURI().toString());
         Image run = new Image(f5.toURI().toString());
-        Player pl1 = new Player("John", 1);
+        //Player pl1 = new Player("John", 1, (byte)1);
         ArrayList<javafx.scene.Node> addedObjects = new ArrayList<>();
         ArrayList<javafx.scene.Node> fieldMovingObjects = new ArrayList<>();
         String levelPath = "";
@@ -73,8 +74,9 @@ public class GameWindow extends Application {
             out.writeUTF("GetLevelPath");
             out.flush();
             levelPath = in.readUTF();
-            playerID = in.readInt();
+            playerID = in.readByte();
             System.out.println(playerID);
+            pl1 = new Player("Player", 1, playerID);
             FileInputStream fin = new FileInputStream(levelPath);
             byte[] buffer = new byte[fin.available()];
             fin.read(buffer, 0, fin.available());
@@ -228,12 +230,8 @@ public class GameWindow extends Application {
                                 {
                                     if (gl_objectsOnField.get(i).lastmove.equals("RIGHT"))
                                     {
-                                        //System.out.println("RIGHT");
-                                        //ImageView person1 = new ImageView(run);
-                                        System.out.println("Animation offset: " + animationOffset);
                                         ImageView person1 = new ImageView(img);
                                         person1.setViewport(new Rectangle2D(animationOffset, 0, 32, 32));
-                                        //gl_objectsOnField.get(i).lastmove = "";
                                         person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
                                         person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
                                         fieldMovingObjects.add(person1);
@@ -266,7 +264,7 @@ public class GameWindow extends Application {
                         }
                     });
                     try {
-                        Thread.sleep(25);
+                        Thread.sleep(20);
                     }
                     catch (Exception ex)
                     {
@@ -288,34 +286,8 @@ public class GameWindow extends Application {
                     case "w": pl1.sendCommand("UP"); break;
                     case "a": pl1.sendCommand("LEFT"); break;
                     case "s": pl1.sendCommand("DOWN"); break;
-                    case "d":
-                    {
-                        pl1.sendCommand("RIGHT"); //break;
-//                        parenki.setViewport(new Rectangle2D(0, 0, 32, 32));
-//                        Animation animation = new SpriteAnimation(parenki, 4, 4, 0, 0,32, 32, Duration.millis(200));
-//                        animation.setCycleCount(1);
-//                        animation.play();
-//                        Group grp = new Group(parenki);
-//                        animations.clear();
-//                        grp.setLayoutX(gl_objectsOnField.get(0).x);
-//                        grp.setLayoutY(gl_objectsOnField.get(0).y);
-//                        animations.add(grp);
-//                        root.getChildren().add(grp);
-                        break;
-                    }
-                    case "f":
-                    {
-                        parenki.setViewport(new Rectangle2D(0, 0, 32, 32));
-                        Animation animation = new SpriteAnimation(parenki, 4, 4, 0, 0,32, 32, Duration.millis(200));
-                        animation.setCycleCount(1);
-                        animation.play();
-                        Group grp = new Group(parenki);
-                        animations.clear();
-                        grp.setLayoutX(gl_objectsOnField.get(0).x);
-                        grp.setLayoutY(gl_objectsOnField.get(0).y);
-                        animations.add(grp);
-                        root.getChildren().add(grp);
-                    }
+                    case "d": pl1.sendCommand("RIGHT"); break;
+                    case " ": pl1.sendCommand("SHOOT"); break;
                 }
             }
         });
@@ -393,7 +365,7 @@ class myThread extends Thread
                 System.out.println("----------------------------");*/
                 this.objectsOnField.clear();
                 int size = objInput.readInt();
-                System.out.println(size);
+                //System.out.println(size);
                 GameWindow.gl_objectsOnField.clear();
                 for(int i = 0; i < size; i++)
                 {
@@ -403,7 +375,6 @@ class myThread extends Thread
 //                     System.out.println("Object y " + obj1.y);
                      this.objectsOnField.add(obj1);
                      GameWindow.gl_objectsOnField.add(obj1);
-                    System.out.println("ID " + obj1.id + " Last move: " + obj1.lastmove);
                 }
                 //globalObjectsOnField.clear();
                 //globalObjectsOnField = objectsOnField;
@@ -419,7 +390,7 @@ class myThread extends Thread
                         imgToPaintOnField.add(person1);
                     }
                 }*/
-                Thread.sleep(100);
+                Thread.sleep(80);
             }
         }
         catch (Exception ex)
