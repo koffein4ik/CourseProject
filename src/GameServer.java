@@ -11,11 +11,11 @@ import java.util.Map;
 public class GameServer
 {
     private static ServerSocket server;
+    private static List<Byte> losers = new ArrayList<>();
 
     public static void main(String args[])
     {
         int offset = 32;
-        int shift = 1;
         String path = "E:\\CourseProject\\src\\Levels\\level1.txt";
         final int port = 11000;
         int width = 0;
@@ -74,7 +74,7 @@ public class GameServer
                 ObjectInputStream objIn = new ObjectInputStream(clientSocket.getInputStream());
                 for(int i = 0; i < monsters.size(); i++)
                 {
-                    processCommand(mainField, monsters.get(i).id, monsters.get(i).makeRandomMove(), offset, objLastMoves, true, objViewDirection);
+                    processCommand(mainField, monsters.get(i).id, monsters.get(i).makeRandomMove(), offset, objLastMoves, true, objViewDirection, monsters);
                     detectCollisions(monsters.get(i).id, mainField, offset);
 
                 }
@@ -119,9 +119,20 @@ public class GameServer
                     }
                 }
                 if(!(command.equals("GetField")))
-                    processCommand(mainField, playerNumber, command, offset, objLastMoves, false, objViewDirection);
+                    processCommand(mainField, playerNumber, command, offset, objLastMoves, false, objViewDirection, monsters);
                 objectsOnFiled = mainField.getObjectPositions(objLastMoves, objViewDirection);
-                objOut.writeInt(objectsOnFiled.size());
+                if ((monsters.size() > 0) && (!(losers.contains(playerNumber))))
+                {
+                    objOut.writeInt(objectsOnFiled.size());
+                }
+                if (monsters.size() == 0)
+                {
+                    objOut.writeInt(-1);
+                }
+                if (losers.contains(playerNumber))
+                {
+                    objOut.writeInt(-2);
+                }
                 for (int i = 0; i < objectsOnFiled.size(); i++)
                 {
                     objOut.writeObject(objectsOnFiled.get(i));
@@ -137,7 +148,7 @@ public class GameServer
         }
     }
 
-    private static void processCommand(GameField gameField, byte playerId, String command, int offset, Map<Byte, String> objLastMoves, Boolean isMonster, Map<Byte, String> objViewDirection)
+    private static void processCommand(GameField gameField, byte playerId, String command, int offset, Map<Byte, String> objLastMoves, Boolean isMonster, Map<Byte, String> objViewDirection, ArrayList<Mob> mobsOnField)
     {
         //byte playerNumb = Byte.parseByte(playerNumber);
         byte playerNumb = playerId;
@@ -169,14 +180,14 @@ public class GameServer
             }
             case "SHOOT":
             {
-                playerShoot(playerNumb, objViewDirection.get(playerNumb), gameField, offset);
+                playerShoot(playerNumb, objViewDirection.get(playerNumb), gameField, offset, mobsOnField);
                 objLastMoves.replace(playerNumb, "SHOOT");
             }
             default: return;
         }
     }
 
-    public static void playerShoot(byte playerId, String viewDirection, GameField mainField, int offset)
+    public static void playerShoot(byte playerId, String viewDirection, GameField mainField, int offset, ArrayList<Mob> mobs)
     {
         PlayerCoord plCoord = new PlayerCoord(0, 0);
         plCoord = plCoord.getPlayerCoord(mainField, playerId);
@@ -188,18 +199,99 @@ public class GameServer
         {
             case "RIGHT":
             {
-                for(int i = plCoord.x; i < mainField.getWidth(); i++)
+                for (int i = plCoord.x; i < mainField.getWidth(); i++)
                 {
-                    for(int j = plCoord.y - (offset / 2); j < plCoord.y + (offset / 2); j++)
+                    for (int j = plCoord.y - (offset / 2); j < plCoord.y + (offset / 2); j++)
                     {
                         if (mainField.getField()[j][i] > (byte)111)
                         {
                             System.out.println("Got you");
+                            for(int k = 0; k < mobs.size(); k++)
+                            {
+                                if (mobs.get(k).id == mainField.getField()[j][i])
+                                {
+                                    mobs.remove(k);
+                                    mainField.setFieldDot(i, j, (byte)0);
+                                    return;
+                                }
+                            }
+                        }
+                        if ((mainField.getField()[j][i] >= (byte)10) && (mainField.getField()[j][i] < (byte)41)) return;
+                    }
+                }
+                break;
+            }
+            case "LEFT":
+            {
+                for (int i = plCoord.x; i > 0; i--)
+                {
+                    for (int j = plCoord.y - (offset / 2); j < plCoord.y + (offset / 2); j++)
+                    {
+                        if (mainField.getField()[j][i] > (byte)111)
+                        {
+                            System.out.println("Got you");
+                            for(int k = 0; k < mobs.size(); k++)
+                            {
+                                if (mobs.get(k).id == mainField.getField()[j][i])
+                                {
+                                    mobs.remove(k);
+                                    mainField.setFieldDot(i, j, (byte)0);
+                                }
+                            }
                             return;
                         }
                         if ((mainField.getField()[j][i] >= (byte)10) && (mainField.getField()[j][i] < (byte)41)) return;
                     }
                 }
+                break;
+            }
+            case "DOWN":
+            {
+                for (int i = plCoord.y; i < mainField.getHeight(); i++)
+                {
+                    for (int j = plCoord.x - (offset / 2); j < plCoord.x + (offset / 2); j++)
+                    {
+                        if (mainField.getField()[i][j] > (byte)111)
+                        {
+                            System.out.println("Got you");
+                            for(int k = 0; k < mobs.size(); k++)
+                            {
+                                if (mobs.get(k).id == mainField.getField()[i][j])
+                                {
+                                    mobs.remove(k);
+                                    mainField.setFieldDot(j, i, (byte)0);
+                                }
+                            }
+                            return;
+                        }
+                        if ((mainField.getField()[i][j] >= (byte)10) && (mainField.getField()[i][j] < (byte)41)) return;
+                    }
+                }
+                break;
+            }
+            case "UP":
+            {
+                for (int i = plCoord.y; i > 0; i--)
+                {
+                    for(int j = plCoord.x - (offset / 2); j < plCoord.x + (offset / 2); j++)
+                    {
+                        if (mainField.getField()[i][j] > (byte)111)
+                        {
+                            System.out.println("Got you");
+                            for(int k = 0; k < mobs.size(); k++)
+                            {
+                                if (mobs.get(k).id == mainField.getField()[i][j])
+                                {
+                                    mobs.remove(k);
+                                    mainField.setFieldDot(j, i, (byte)0);
+                                }
+                            }
+                            return;
+                        }
+                        if ((mainField.getField()[i][j] >= (byte)10) && (mainField.getField()[i][j] < (byte)41)) return;
+                    }
+                }
+                break;
             }
         }
     }
@@ -223,10 +315,7 @@ public class GameServer
         int randIndex;
         do
         {
-//            randX = width / 4  + (int) (Math.random() * (width - width / 4));
-//            randY = height / 4 + (int) (Math.random() * (height - height / 4));
             randIndex = (int) (Math.random() * emptySize);
-            //System.out.println(randIndex);
         } while ((emptyCoordinates.get(randIndex).x < width) && (emptyCoordinates.get(randIndex).y < height));
         mainField.setFieldDot(emptyCoordinates.get(randIndex).x, emptyCoordinates.get(randIndex).y, monsterId);
         emptyCoordinates.remove(randIndex);
@@ -256,22 +345,39 @@ public class GameServer
         for (int i = startX - offset; i <= startX + offset; i++)
         {
             if((mainField.getField()[startY - offset][i] > plStartId) && (mainField.getField()[startY - offset][i] < plEndId))
-                System.out.println("COLLISION");
+            {
+                losers.add(mainField.getField()[startY - offset][i]);
+                mainField.setFieldDot(i, startY - offset, (byte)0);
+                return 0;
+            }
         }
         for (int i = startY - offset; i <= startY + offset; i++)
         {
             if((mainField.getField()[i][startX - offset] > plStartId) && (mainField.getField()[i][startX - offset] < plEndId))
-                System.out.println("COLLISION");
+            {
+                losers.add(mainField.getField()[i][startX - offset]);
+                mainField.setFieldDot(startX - offset, i, (byte)0);
+                return 0;
+            }
         }
         for (int i = startX - offset; i <= startX + offset; i++)
         {
             if((mainField.getField()[startY + offset][i] > plStartId) && (mainField.getField()[startY + offset][i] < plEndId))
-                System.out.println("COLLISION");
+            {
+                losers.add(mainField.getField()[startY + offset][i]);
+                mainField.setFieldDot(i, startY + offset, (byte)0);
+                return 0;
+            }
         }
         for (int i = startY - offset; i <= startY + offset; i++)
         {
             if((mainField.getField()[i][startX + offset] > plStartId) && (mainField.getField()[i][startX + offset] < 112))
-                System.out.println("COLLISION");
+            {
+                losers.add(mainField.getField()[i][startX + offset]);
+                mainField.setFieldDot(startX + offset, i, (byte)0);
+                return 0;
+
+            }
         }
         return 0;
     }
