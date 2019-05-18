@@ -1,6 +1,8 @@
+import javax.swing.text.StyledEditorKit;
 import java.io.*;
 import java.net.Socket;
 import java.net.ServerSocket;
+import java.rmi.MarshalException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,10 +21,10 @@ public class GameServer
         int width = 0;
         int height = 0;
         ArrayList<ObjToTransfer> objectsOnFiled = new ArrayList<>();
+        ArrayList<PlayerCoord> emptyCoordinates = new ArrayList<>();
         ArrayList<Mob> monsters = new ArrayList<>();
-        byte startMonsterId = (byte)201;
-        monsters = generateMonsters(1, startMonsterId);
-
+        byte startMonsterId = 112;
+        monsters = generateMonsters(2, startMonsterId);
         Map<Byte, String> objLastMoves = new HashMap<>();
         try (FileInputStream fin = new FileInputStream(path)) {
             byte[] buffer = new byte[fin.available()];
@@ -50,9 +52,13 @@ public class GameServer
         height *= offset;
         width *= offset;
         GameField mainField = new GameField(height, width);
-        mainField.fromFile(path, offset);
+        emptyCoordinates = mainField.fromFile(path, offset);
+        for(int i = 0; i < monsters.size(); i++)
+        {
+            setMonsterToRandomPoint(mainField, monsters.get(i).id, offset, emptyCoordinates);
+        }
         String command;
-        String playerNumber;
+        byte playerNumber;
         try
         {
             server = new ServerSocket(port);
@@ -61,9 +67,14 @@ public class GameServer
                 Socket clientSocket = server.accept();
                 ObjectOutputStream objOut = new ObjectOutputStream(clientSocket.getOutputStream());
                 ObjectInputStream objIn = new ObjectInputStream(clientSocket.getInputStream());
+                for(int i = 0; i < monsters.size(); i++)
+                {
+                    processCommand(mainField, monsters.get(i).id, monsters.get(i).makeRandomMove(), offset, objLastMoves);
+                }
                 //DataInputStream in = new DataInputStream(clientSocket.getInputStream());
                 //DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
-                playerNumber = objIn.readUTF();
+                //playerNumber = objIn.readUTF();
+                playerNumber = objIn.readByte();
                 command = objIn.readUTF();
                 //System.out.println(playerNumber);
                 //System.out.println(command);
@@ -89,22 +100,16 @@ public class GameServer
                         }
                     }
                     objOut.writeInt(startID);
-                    boolean dotSet = false;
-                    for (int i = 15; i < height; i += 16)
+                    objOut.flush();
+                    for (int i = 0; i < emptyCoordinates.size(); i++)
                     {
-                        for (int j = 0; j < width; j += 16)
+                        if(isSquareEmpty(emptyCoordinates.get(i).x, emptyCoordinates.get(i).y, mainField, offset))
                         {
-                            if (mainField.getField()[i][j] == 0)
-                            {
-                                //mainField.setFieldDot(j, i, (byte)startID);
-                                dotSet = true;
-                                break;
-                            }
-                            if (dotSet) break;
+                            mainField.setFieldDot(emptyCoordinates.get(i).x, emptyCoordinates.get(i).y, (byte) startID);
+                            emptyCoordinates.remove(i);
+                            break;
                         }
                     }
-                    objOut.flush();
-                    continue;
                 }
                 if(!(command.equals("GetField")))
                     processCommand(mainField, playerNumber, command, offset, objLastMoves);
@@ -125,10 +130,11 @@ public class GameServer
         }
     }
 
-    private static void processCommand(GameField gameField, String playerNumber, String command, int offset, Map<Byte, String> objLastMoves)
+    private static void processCommand(GameField gameField, byte playerId, String command, int offset, Map<Byte, String> objLastMoves)
     {
-        byte playerNumb = Byte.parseByte(playerNumber);
-        PlayerCoord currCoord = new PlayerCoord();
+        //byte playerNumb = Byte.parseByte(playerNumber);
+        byte playerNumb = playerId;
+        PlayerCoord currCoord = new PlayerCoord(0, 0);
         currCoord = currCoord.getPlayerCoord(gameField, playerNumb);
         switch (command) {
             case "UP": {
@@ -161,6 +167,36 @@ public class GameServer
         {
             result.add(new Mob(startId));
             startId++;
+        }
+        return result;
+    }
+
+    public static void setMonsterToRandomPoint(GameField mainField, byte monsterId, int offset, ArrayList<PlayerCoord> emptyCoordinates)
+    {
+        int height = mainField.getHeight() / 3;
+        int width = mainField.getWidth() / 3;
+        int emptySize = emptyCoordinates.size();
+        int randIndex;
+        do
+        {
+//            randX = width / 4  + (int) (Math.random() * (width - width / 4));
+//            randY = height / 4 + (int) (Math.random() * (height - height / 4));
+            randIndex = (int) (Math.random() * emptySize);
+            //System.out.println(randIndex);
+        } while ((emptyCoordinates.get(randIndex).x < width) && (emptyCoordinates.get(randIndex).y < height));
+        mainField.setFieldDot(emptyCoordinates.get(randIndex).x, emptyCoordinates.get(randIndex).y, monsterId);
+        emptyCoordinates.remove(randIndex);
+    }
+
+    public static Boolean isSquareEmpty(int x, int y, GameField mainField, int offset)
+    {
+        Boolean result = true;
+        for(int i = y; i < y + offset; i++)
+        {
+            for (int j = x; j < x + offset; j++)
+            {
+                if(!((((mainField.getField()[i][j] > 40) && (mainField.getField()[i][j] < 51))) || (mainField.getField()[i][j] == 0))) return false;
+            }
         }
         return result;
     }
@@ -328,8 +364,9 @@ class GameField {
         return gf1;
     }
 
-    public GameField fromFile(String path, int offset) {
+    public ArrayList<PlayerCoord> fromFile(String path, int offset) {
 
+        ArrayList<PlayerCoord> emptySquares = new ArrayList<>();
         try (FileInputStream fin = new FileInputStream(path)) {
             byte[] buffer = new byte[fin.available()];
             fin.read(buffer, 0, fin.available());
@@ -347,6 +384,7 @@ class GameField {
                 switch (buffer[k]) {
                     case 13: {
                         this.field[i][j] = Byte.parseByte(val);
+                        if ((Byte.parseByte(val)) > 40 && (Byte.parseByte(val) < 51)) emptySquares.add(new PlayerCoord(i, j));
                         val = "";
                         k++;
                         i += offset;
@@ -356,6 +394,7 @@ class GameField {
                     case 32:
                     {
                         this.field[i][j] = Byte.parseByte(val);
+                        if ((Byte.parseByte(val)) > 40 && (Byte.parseByte(val) < 51)) emptySquares.add(new PlayerCoord(i, j));
                         j += offset;
                         val = "";
                         continue;
@@ -371,7 +410,7 @@ class GameField {
 
             System.out.println(ex.getMessage());
         }
-        return null;
+        return emptySquares;
     }
 
     public ArrayList<ObjToTransfer> getObjectPositions(Map<Byte, String> objLastMove)
@@ -382,7 +421,7 @@ class GameField {
             for (int j = 0; j < this.width; j++)
             {
                 byte currFieldValue = this.field[i][j];
-                if (((currFieldValue > 100) && (currFieldValue < 133)) || ((currFieldValue > 200) && (currFieldValue < 233)))  //УБРАТЬ Единицу
+                if (((currFieldValue > 100) && (currFieldValue < 112)) || ((currFieldValue > 111) && (currFieldValue < 127)))  //УБРАТЬ Единицу
                 {
                     ObjToTransfer obj1 = new ObjToTransfer(currFieldValue, j, i);
                     if (objLastMove.containsKey(currFieldValue))
@@ -406,10 +445,16 @@ class PlayerCoord
     int x;
     int y;
 
+    public PlayerCoord(int recX, int recY)
+    {
+        this.x = recX;
+        this.y = recY;
+    }
+
     public PlayerCoord getPlayerCoord(GameField gameField, int playerNumber)
     {
         byte[][] tempField = gameField.getField();
-        PlayerCoord coord = new PlayerCoord();
+        PlayerCoord coord = new PlayerCoord(-1, -1);
         coord.x = -1;
         coord.y = -1;
         int height = gameField.getHeight();

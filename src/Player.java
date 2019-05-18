@@ -50,7 +50,8 @@ public class Player {
             this.clientSocket = new Socket("127.0.0.1", 11000);
             this.out = new ObjectOutputStream(clientSocket.getOutputStream());
             this.in = new ObjectInputStream(clientSocket.getInputStream());
-            out.writeUTF("101"); // Изменить на playername
+            //out.writeUTF("101"); // Изменить на playername
+            out.writeByte(101);
             out.flush();
             out.writeUTF(command);
             out.flush();

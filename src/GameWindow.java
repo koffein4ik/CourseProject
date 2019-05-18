@@ -55,7 +55,7 @@ public class GameWindow extends Application {
         final ImageView parenki = new ImageView(img);
         File f5 = new File("src/Pictures/running_guy.png");
         File f6 = new File("src/Pictures/monster.png");
-        Image monster = new Image(f4.toURI().toString());
+        Image monster = new Image(f6.toURI().toString());
         Image run = new Image(f5.toURI().toString());
         Player pl1 = new Player("John", 1);
         ArrayList<javafx.scene.Node> addedObjects = new ArrayList<>();
@@ -68,7 +68,8 @@ public class GameWindow extends Application {
             //DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
             ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
             ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
-            out.writeUTF("1");
+            //out.writeUTF("1");
+            out.writeByte(1);
             out.writeUTF("GetLevelPath");
             out.flush();
             levelPath = in.readUTF();
@@ -245,6 +246,20 @@ public class GameWindow extends Application {
                                         fieldMovingObjects.add(person1);
                                     }
                                 }
+                                if (gl_objectsOnField.get(i).id == 102)
+                                {
+                                    ImageView person1 = new ImageView(pers1);
+                                    person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                    person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                    fieldMovingObjects.add(person1);
+                                }
+                                if (gl_objectsOnField.get(i).id > 111)
+                                {
+                                    ImageView monst1 = new ImageView(monster);
+                                    monst1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                    monst1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                    fieldMovingObjects.add(monst1);
+                                }
                             }
                             root.getChildren().addAll(fieldMovingObjects);
                             root.getChildren().addAll(animations);
@@ -357,7 +372,8 @@ class myThread extends Thread
                 ObjectInputStream objInput = new ObjectInputStream(clientSocket.getInputStream());
                 //DataInputStream in = new DataInputStream(clientSocket.getInputStream());
                 //DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
-                out.writeUTF("1"); // Изменить на playername
+                //out.writeUTF("1"); // Изменить на playername
+                out.writeByte(1);
                 out.flush();
                 out.writeUTF("GetField");
                 out.flush();
