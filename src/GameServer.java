@@ -2,7 +2,9 @@ import java.io.*;
 import java.net.Socket;
 import java.net.ServerSocket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class GameServer
 {
@@ -10,13 +12,18 @@ public class GameServer
 
     public static void main(String args[])
     {
-        int offset = 16;
+        int offset = 32;
         int shift = 1;
         String path = "E:\\CourseProject\\src\\Levels\\level1.txt";
         final int port = 11000;
         int width = 0;
         int height = 0;
         ArrayList<ObjToTransfer> objectsOnFiled = new ArrayList<>();
+        ArrayList<Mob> monsters = new ArrayList<>();
+        byte startMonsterId = (byte)201;
+        monsters = generateMonsters(1, startMonsterId);
+
+        Map<Byte, String> objLastMoves = new HashMap<>();
         try (FileInputStream fin = new FileInputStream(path)) {
             byte[] buffer = new byte[fin.available()];
             fin.read(buffer, 0, fin.available());
@@ -58,23 +65,56 @@ public class GameServer
                 //DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
                 playerNumber = objIn.readUTF();
                 command = objIn.readUTF();
-                System.out.println(playerNumber);
-                System.out.println(command);
+                //System.out.println(playerNumber);
+                //System.out.println(command);
                 if (command.equals("GetLevelPath"))
                 {
                     objOut.writeUTF(path);
-                    objOut.flush();
+                    //objOut.flush();
                     System.out.println("Sent");
+                    objectsOnFiled = mainField.getObjectPositions(objLastMoves);
+                    int startID = 101;
+                    boolean idGenerated = false;
+                    while (!(idGenerated))
+                    {
+                        idGenerated = true;
+                        for (int i = 0; i < objectsOnFiled.size(); i++)
+                        {
+                            if (startID == objectsOnFiled.get(i).id)
+                            {
+                                startID++;
+                                idGenerated = false;
+                                break;
+                            }
+                        }
+                    }
+                    objOut.writeInt(startID);
+                    boolean dotSet = false;
+                    for (int i = 15; i < height; i += 16)
+                    {
+                        for (int j = 0; j < width; j += 16)
+                        {
+                            if (mainField.getField()[i][j] == 0)
+                            {
+                                //mainField.setFieldDot(j, i, (byte)startID);
+                                dotSet = true;
+                                break;
+                            }
+                            if (dotSet) break;
+                        }
+                    }
+                    objOut.flush();
                     continue;
                 }
                 if(!(command.equals("GetField")))
-                    processCommand(mainField, playerNumber, command, offset);
-                objectsOnFiled = mainField.getObjectPositions();
+                    processCommand(mainField, playerNumber, command, offset, objLastMoves);
+                objectsOnFiled = mainField.getObjectPositions(objLastMoves);
                 objOut.writeInt(objectsOnFiled.size());
                 for (int i = 0; i < objectsOnFiled.size(); i++)
                 {
                     objOut.writeObject(objectsOnFiled.get(i));
                 }
+                if (command.equals("GetField")) objLastMoves.clear();
                 //out.write(mainField.getOneDimensionalField(), 0, mainField.getOneDimensionalField().length);
                 objOut.flush();
             }
@@ -85,32 +125,65 @@ public class GameServer
         }
     }
 
-    private static void processCommand(GameField gameField, String playerNumber, String command, int offset)
+    private static void processCommand(GameField gameField, String playerNumber, String command, int offset, Map<Byte, String> objLastMoves)
     {
         byte playerNumb = Byte.parseByte(playerNumber);
         PlayerCoord currCoord = new PlayerCoord();
         currCoord = currCoord.getPlayerCoord(gameField, playerNumb);
         switch (command) {
             case "UP": {
-                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x, currCoord.y - 1, playerNumb, offset);
+                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x, currCoord.y - 1, playerNumb, offset, objLastMoves);
                 return;
             }
             case "DOWN":
             {
-                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x, currCoord.y + 1, playerNumb, offset);
+                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x, currCoord.y + 1, playerNumb, offset, objLastMoves);
                 return;
             }
             case "LEFT":
             {
-                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x - 1, currCoord.y, playerNumb, offset);
+                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x - 1, currCoord.y, playerNumb, offset, objLastMoves);
                 return;
             }
             case "RIGHT":
             {
-                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x + 1, currCoord.y, playerNumb, offset);
+                gameField.replaceDot(currCoord.x, currCoord.y, currCoord.x + 1, currCoord.y, playerNumb, offset, objLastMoves);
                 return;
             }
             default: return;
+        }
+    }
+
+    public static ArrayList<Mob> generateMonsters(int amount, byte startId)
+    {
+        ArrayList<Mob> result = new ArrayList<>();
+        for (int i = 0; i < amount; i++)
+        {
+            result.add(new Mob(startId));
+            startId++;
+        }
+        return result;
+    }
+}
+
+class Mob {
+    public byte id;
+
+    public Mob(byte recivedId)
+    {
+        this.id = recivedId;
+    }
+    public String makeRandomMove()
+    {
+        double dMove = Math.random() * 4;
+        byte move = (byte)dMove;
+        switch (move)
+        {
+            case 0 : return "LEFT";
+            case 1 : return "RIGHT";
+            case 2 : return "UP";
+            case 3 : return "DOWN";
+            default: return "RIGHT";
         }
     }
 }
@@ -151,12 +224,28 @@ class GameField {
         return !((x + offset >= width) || (y + offset >= height) || (x < 0) || (y < 0)); // Мб надо добавить - 1
     }
 
-    public void replaceDot(int oldX, int oldY, int newX, int newY, byte value, int offset)
+    public void replaceDot(int oldX, int oldY, int newX, int newY, byte value, int offset, Map<Byte, String> objLastMoves)
     {
         if (isCoordEmpty(newX, newY, offset, value))
         {
             this.field[oldY][oldX] = 0; // Заменить на ID травы
             this.field[newY][newX] = value;
+            if (newX > oldX)
+            {
+                objLastMoves.put(value, "RIGHT");
+            }
+            if (newY > oldY)
+            {
+                objLastMoves.put(value, "DOWN");
+            }
+            if (newX < oldX)
+            {
+                objLastMoves.put(value, "LEFT");
+            }
+            if (newY < oldY)
+            {
+                objLastMoves.put(value, "UP");
+            }
         }
     }
 
@@ -285,17 +374,25 @@ class GameField {
         return null;
     }
 
-    public ArrayList<ObjToTransfer> getObjectPositions()
+    public ArrayList<ObjToTransfer> getObjectPositions(Map<Byte, String> objLastMove)
     {
         ArrayList<ObjToTransfer> result = new ArrayList<ObjToTransfer>();
         for (int i = 0; i < this.height; i++)
         {
             for (int j = 0; j < this.width; j++)
             {
-                int currFieldValue = this.field[i][j];
-                if (((currFieldValue > 100) && (currFieldValue < 133)) || (currFieldValue == 1)) //УБРАТЬ Единицу
+                byte currFieldValue = this.field[i][j];
+                if (((currFieldValue > 100) && (currFieldValue < 133)) || ((currFieldValue > 200) && (currFieldValue < 233)))  //УБРАТЬ Единицу
                 {
                     ObjToTransfer obj1 = new ObjToTransfer(currFieldValue, j, i);
+                    if (objLastMove.containsKey(currFieldValue))
+                    {
+                        obj1.lastmove = objLastMove.get(currFieldValue);
+                    }
+                    else
+                    {
+                        obj1.lastmove = "STAND";
+                    }
                     result.add(obj1);
                 }
             }

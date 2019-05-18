@@ -4,6 +4,7 @@ public class ObjToTransfer implements Serializable {
     public int id;
     public int x;
     public int y;
+    public String lastmove = "";
 
     public ObjToTransfer(int id, int x, int y)
     {

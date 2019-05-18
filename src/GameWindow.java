@@ -1,6 +1,11 @@
+import javafx.animation.Animation;
+import javafx.animation.AnimationTimer;
+import javafx.animation.Transition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.EventHandler;
+import javafx.geometry.Rectangle2D;
+import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
@@ -8,13 +13,11 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Timer;
-import java.util.TimerTask;
 
 
 public class GameWindow extends Application {
@@ -23,6 +26,9 @@ public class GameWindow extends Application {
     public static int gl_width;
     public static GameField gl_mainfield;
     public static ArrayList<ObjToTransfer> gl_objectsOnField = new ArrayList<>();
+    public static ArrayList<javafx.scene.Node> animations = new ArrayList<>();
+    public static ArrayList<Animation> anim = new ArrayList<>();
+    public static int animationOffset = 0;
 
     public static void main(String[] args) {
         launch(args);
@@ -30,19 +36,27 @@ public class GameWindow extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        int offset = 16;
+        int offset = 32;
         int height = 1;
         int width = 1;
+        int playerID;
         ArrayList<ObjToTransfer> objectsOnFiled = new ArrayList<>();
         GameField mainField = new GameField(1, 1);
         Pane root = new Pane();
         Scene scene = new Scene(root, 320, 160);
-        File f1 = new File("src/Pictures/wall.png");
+        File f1 = new File("src/Pictures/wall_32px.png");
         Image wall = new Image(f1.toURI().toString());
-        File f2 = new File("src/Pictures/grass.png");
+        File f2 = new File("src/Pictures/grass_32px.png");
         Image grass = new Image(f2.toURI().toString());
-        File f3 = new File("src/Pictures/pers1.png");
+        File f3 = new File("src/Pictures/pers1_32px.png");
         Image pers1 = new Image(f3.toURI().toString());
+        File f4 = new File("src/Pictures/Parenki1.png");
+        Image img = new Image(f4.toURI().toString());
+        final ImageView parenki = new ImageView(img);
+        File f5 = new File("src/Pictures/running_guy.png");
+        File f6 = new File("src/Pictures/monster.png");
+        Image monster = new Image(f4.toURI().toString());
+        Image run = new Image(f5.toURI().toString());
         Player pl1 = new Player("John", 1);
         ArrayList<javafx.scene.Node> addedObjects = new ArrayList<>();
         ArrayList<javafx.scene.Node> fieldMovingObjects = new ArrayList<>();
@@ -58,6 +72,8 @@ public class GameWindow extends Application {
             out.writeUTF("GetLevelPath");
             out.flush();
             levelPath = in.readUTF();
+            playerID = in.readInt();
+            System.out.println(playerID);
             FileInputStream fin = new FileInputStream(levelPath);
             byte[] buffer = new byte[fin.available()];
             fin.read(buffer, 0, fin.available());
@@ -155,6 +171,7 @@ public class GameWindow extends Application {
             @Override
             public void run()
             {
+                //int animationOffset = 0;
                 while(true)
                 {
                     Platform.runLater(new Runnable() {
@@ -206,31 +223,47 @@ public class GameWindow extends Application {
 //                                System.out.println("Object id " + gl_objectsOnField.get(i).id);
 //                                System.out.println("Object x "+ gl_objectsOnField.get(i).x);
 //                                System.out.println("Object y " + gl_objectsOnField.get(i).y);
-                                if (gl_objectsOnField.get(i).id == 1)
+                                if (gl_objectsOnField.get(i).id == 101)
                                 {
-                                    ImageView person1 = new ImageView(pers1);
-                                    person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
-                                    person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
-                                    fieldMovingObjects.add(person1);
-                                    //root.getChildren().add(person1);
-                                    //Отдельный список, в котором будут объекты на поле
+                                    if (gl_objectsOnField.get(i).lastmove.equals("RIGHT"))
+                                    {
+                                        //System.out.println("RIGHT");
+                                        //ImageView person1 = new ImageView(run);
+                                        System.out.println("Animation offset: " + animationOffset);
+                                        ImageView person1 = new ImageView(img);
+                                        person1.setViewport(new Rectangle2D(animationOffset, 0, 32, 32));
+                                        //gl_objectsOnField.get(i).lastmove = "";
+                                        person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                        person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                        fieldMovingObjects.add(person1);
+                                    }
+                                    else
+                                    {
+                                        ImageView person1 = new ImageView(pers1);
+                                        person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                        person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                        fieldMovingObjects.add(person1);
+                                    }
                                 }
                             }
                             root.getChildren().addAll(fieldMovingObjects);
+                            root.getChildren().addAll(animations);
                         }
                     });
                     try {
-                        Thread.sleep(10);
+                        Thread.sleep(25);
                     }
                     catch (Exception ex)
                     {
                         System.out.println(ex.toString());
                     }
+                    animationOffset += offset;
+                    if (animationOffset == (offset * 4)) animationOffset = 0;
                 }
             }
         });
         thread1.start();
-        myThread Jthread = new myThread("Jthread", gl_objectsOnField);
+        myThread Jthread = new myThread("Jthread", gl_objectsOnField, anim);
         Jthread.start();
 
         scene.setOnKeyTyped(new EventHandler<KeyEvent>() {
@@ -240,7 +273,34 @@ public class GameWindow extends Application {
                     case "w": pl1.sendCommand("UP"); break;
                     case "a": pl1.sendCommand("LEFT"); break;
                     case "s": pl1.sendCommand("DOWN"); break;
-                    case "d": pl1.sendCommand("RIGHT"); break;
+                    case "d":
+                    {
+                        pl1.sendCommand("RIGHT"); //break;
+//                        parenki.setViewport(new Rectangle2D(0, 0, 32, 32));
+//                        Animation animation = new SpriteAnimation(parenki, 4, 4, 0, 0,32, 32, Duration.millis(200));
+//                        animation.setCycleCount(1);
+//                        animation.play();
+//                        Group grp = new Group(parenki);
+//                        animations.clear();
+//                        grp.setLayoutX(gl_objectsOnField.get(0).x);
+//                        grp.setLayoutY(gl_objectsOnField.get(0).y);
+//                        animations.add(grp);
+//                        root.getChildren().add(grp);
+                        break;
+                    }
+                    case "f":
+                    {
+                        parenki.setViewport(new Rectangle2D(0, 0, 32, 32));
+                        Animation animation = new SpriteAnimation(parenki, 4, 4, 0, 0,32, 32, Duration.millis(200));
+                        animation.setCycleCount(1);
+                        animation.play();
+                        Group grp = new Group(parenki);
+                        animations.clear();
+                        grp.setLayoutX(gl_objectsOnField.get(0).x);
+                        grp.setLayoutY(gl_objectsOnField.get(0).y);
+                        animations.add(grp);
+                        root.getChildren().add(grp);
+                    }
                 }
             }
         });
@@ -277,16 +337,19 @@ class myThread extends Thread
 {
     ArrayList<ObjToTransfer> objectsOnField = new ArrayList<>();
     ArrayList<ObjToTransfer> globalObjectsOnField;
-    public myThread(String name, ArrayList<ObjToTransfer> gl_ObjectsOnField)
+    ArrayList<Animation> animations = new ArrayList<>();
+    public myThread(String name, ArrayList<ObjToTransfer> gl_ObjectsOnField, ArrayList<Animation> animations1)
     {
         super(name);
         this.globalObjectsOnField = gl_ObjectsOnField;
+        this.animations = animations1;
     }
 
     public void run()
     {
-        File f3 = new File("src/Pictures/pers1.png");
-        Image pers1 = new Image(f3.toURI().toString());
+        File f4 = new File("src/Pictures/Parenki1.png");
+        Image img = new Image(f4.toURI().toString());
+        final ImageView parenki = new ImageView(img);
         try {
             while(true) {
                 Socket clientSocket = new Socket("127.0.0.1", 11000);
@@ -314,16 +377,17 @@ class myThread extends Thread
                 System.out.println("----------------------------");*/
                 this.objectsOnField.clear();
                 int size = objInput.readInt();
-                //System.out.println(size);
+                System.out.println(size);
                 GameWindow.gl_objectsOnField.clear();
                 for(int i = 0; i < size; i++)
                 {
-                     ObjToTransfer obj1 = (ObjToTransfer)objInput.readObject();
+                    ObjToTransfer obj1 = (ObjToTransfer)objInput.readObject();
 //                     System.out.println("Object id " + obj1.id);
 //                     System.out.println("Object x "+ obj1.x);
 //                     System.out.println("Object y " + obj1.y);
                      this.objectsOnField.add(obj1);
                      GameWindow.gl_objectsOnField.add(obj1);
+                    System.out.println("ID " + obj1.id + " Last move: " + obj1.lastmove);
                 }
                 //globalObjectsOnField.clear();
                 //globalObjectsOnField = objectsOnField;
@@ -339,12 +403,42 @@ class myThread extends Thread
                         imgToPaintOnField.add(person1);
                     }
                 }*/
-                Thread.sleep(10);
+                Thread.sleep(100);
             }
         }
         catch (Exception ex)
         {
             System.out.println(ex.toString());
         }
+    }
+}
+
+class SpriteAnimation extends Transition
+{
+    private final ImageView imgView;
+    private final int count;
+    private final int columns;
+    private final int offsetX;
+    private final int offsetY;
+    private final int witdth;
+    private final int height;
+
+    public SpriteAnimation(ImageView imgView, int count, int columns, int offsetX, int offsetY, int witdth, int height, Duration duration) {
+        this.imgView = imgView;
+        this.count = count;
+        this.columns = columns;
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.witdth = witdth;
+        this.height = height;
+        setCycleDuration(duration);
+    }
+
+    protected void interpolate(double k)
+    {
+        final int index = Math.min((int) Math.floor(k * count), count - 1);
+        final int x = (index % columns) * witdth + offsetX;
+        final int y = (index / columns) * witdth + offsetY;
+        imgView.setViewport(new Rectangle2D(x, y, witdth, height));
     }
 }
