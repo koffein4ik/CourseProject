@@ -5,18 +5,16 @@ import javafx.application.Platform;
 import javafx.event.EventHandler;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.Pane;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class GameWindow extends Application {
@@ -29,7 +27,8 @@ public class GameWindow extends Application {
     public static ArrayList<Animation> anim = new ArrayList<>();
     public static int animationOffset = 0;
     public static Player pl1;
-    public static int lastRecievedCommand = 0;
+    static AtomicInteger lastRecievedCommand = new AtomicInteger(0);
+    static Boolean messageDisplayed;
 
     public static void main(String[] args) {
         launch(args);
@@ -51,15 +50,16 @@ public class GameWindow extends Application {
         Image grass = new Image(f2.toURI().toString());
         File f3 = new File("src/Pictures/pers1_32px.png");
         Image pers1 = new Image(f3.toURI().toString());
-        File f4 = new File("src/Pictures/Parenki1.png");
-        Image img = new Image(f4.toURI().toString());
-        final ImageView parenki = new ImageView(img);
-        File f5 = new File("src/Pictures/running_guy.png");
         File f6 = new File("src/Pictures/monster.png");
-        File f7 = new File("src/Pictures/chelbosy.png");
+        File f7 = new File("src/Pictures/chelbosy1.png");
+        File f10 = new File("src/Pictures/chelbosy2.png");
+        File f11 = new File("src/Pictures/chelbosy3.png");
+        File f8 = new File("src/Pictures/slime.png");
+        Image slime = new Image(f8.toURI().toString());
         Image chelbosy = new Image(f7.toURI().toString());
+        Image chelbosy2 = new Image(f10.toURI().toString());
+        Image chelbosy3 = new Image(f11.toURI().toString());
         Image monster = new Image(f6.toURI().toString());
-        Image run = new Image(f5.toURI().toString());
         ArrayList<javafx.scene.Node> addedObjects = new ArrayList<>();
         ArrayList<javafx.scene.Node> fieldMovingObjects = new ArrayList<>();
         String levelPath = "";
@@ -151,8 +151,7 @@ public class GameWindow extends Application {
             {
                 while(true)
                 {
-                    int status = lastRecievedCommand;
-                    System.out.println(status);
+                    messageDisplayed = false;
                     Platform.runLater(new Runnable() {
                         @Override
                         public void run()
@@ -241,6 +240,50 @@ public class GameWindow extends Application {
                                             fieldMovingObjects.add(person1);
                                             break;
                                         }
+                                        case "SHOOT" :
+                                        {
+                                            System.out.println("SHOOT " + gl_objectsOnField.get(i).viewDirection);
+                                            switch (gl_objectsOnField.get(i).viewDirection)
+                                            {
+                                                case "RIGHT" :
+                                                {
+                                                    ImageView person1 = new ImageView(chelbosy);
+                                                    person1.setViewport(new Rectangle2D(animationOffset, 128, 32, 32));
+                                                    person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                                    person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                                    fieldMovingObjects.add(person1);
+                                                    break;
+                                                }
+                                                case "LEFT" :
+                                                {
+                                                    ImageView person1 = new ImageView(chelbosy);
+                                                    person1.setViewport(new Rectangle2D(animationOffset, 160, 32, 32));
+                                                    person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                                    person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                                    fieldMovingObjects.add(person1);
+                                                    break;
+                                                }
+                                                case "DOWN" :
+                                                {
+                                                    ImageView person1 = new ImageView(chelbosy);
+                                                    person1.setViewport(new Rectangle2D(animationOffset, 192, 32, 32));
+                                                    person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                                    person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                                    fieldMovingObjects.add(person1);
+                                                    break;
+                                                }
+                                                case "UP" :
+                                                {
+                                                    ImageView person1 = new ImageView(chelbosy);
+                                                    person1.setViewport(new Rectangle2D(animationOffset, 224, 32, 32));
+                                                    person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                                    person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                                    fieldMovingObjects.add(person1);
+                                                    break;
+                                                }
+                                            }
+                                            break;
+                                        }
                                         default:
                                         {
                                             ImageView person1 = new ImageView(chelbosy);
@@ -260,54 +303,66 @@ public class GameWindow extends Application {
                                         }
 
                                     }
-//                                    if (gl_objectsOnField.get(i).lastmove.equals("RIGHT"))
-//                                    {
-//                                        ImageView person1 = new ImageView(img);
-//                                        person1.setViewport(new Rectangle2D(animationOffset, 0, 32, 32));
-//                                        person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
-//                                        person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
-//                                        fieldMovingObjects.add(person1);
-//                                    }
-//                                    else
-//                                    {
-//                                        ImageView person1 = new ImageView(pers1);
-//                                        person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
-//                                        person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
-//                                        fieldMovingObjects.add(person1);
-//                                    }
                                 }
                                 if (gl_objectsOnField.get(i).id == 102)
                                 {
-                                    ImageView person1 = new ImageView(pers1);
-                                    person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
-                                    person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
-                                    fieldMovingObjects.add(person1);
+                                    fieldMovingObjects.add(getImage(gl_objectsOnField.get(i).lastmove, gl_objectsOnField.get(i).viewDirection, chelbosy2, gl_objectsOnField.get(i).x, gl_objectsOnField.get(i).y));
+                                }
+                                if (gl_objectsOnField.get(i).id == 103)
+                                {
+                                    fieldMovingObjects.add(getImage(gl_objectsOnField.get(i).lastmove, gl_objectsOnField.get(i).viewDirection, chelbosy3, gl_objectsOnField.get(i).x, gl_objectsOnField.get(i).y));
                                 }
                                 if (gl_objectsOnField.get(i).id > 111)
                                 {
-                                    ImageView monst1 = new ImageView(monster);
-                                    monst1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
-                                    monst1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
-                                    fieldMovingObjects.add(monst1);
+                                        switch (gl_objectsOnField.get(i).lastmove) {
+                                            case "RIGHT": {
+                                                ImageView person1 = new ImageView(slime);
+                                                person1.setViewport(new Rectangle2D(animationOffset, 0, 32, 32));
+                                                person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                                person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                                fieldMovingObjects.add(person1);
+                                                break;
+                                            }
+                                            case "LEFT": {
+                                                ImageView person1 = new ImageView(slime);
+                                                person1.setViewport(new Rectangle2D(animationOffset, 32, 32, 32));
+                                                person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                                person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                                fieldMovingObjects.add(person1);
+                                                break;
+
+                                            }
+                                            case "DOWN": {
+                                                ImageView person1 = new ImageView(slime);
+                                                person1.setViewport(new Rectangle2D(animationOffset, 64, 32, 32));
+                                                person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                                person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                                fieldMovingObjects.add(person1);
+                                                break;
+
+                                            }
+                                            case "UP": {
+                                                ImageView person1 = new ImageView(slime);
+                                                person1.setViewport(new Rectangle2D(animationOffset, 96, 32, 32));
+                                                person1.setLayoutX(gl_objectsOnField.get(i).x /* offset*/);
+                                                person1.setLayoutY(gl_objectsOnField.get(i).y /* offset*/);
+                                                fieldMovingObjects.add(person1);
+                                                break;
+                                            }
+                                        }
                                 }
                             }
                             root.getChildren().addAll(fieldMovingObjects);
                             root.getChildren().addAll(animations);
-                            System.out.println(status);
-                            if ((status == -1) || (status == -2))
+                            if ((lastRecievedCommand.get() == -1) || (lastRecievedCommand.get() == -2))
                             {
-                                WinWindow.showWindow(lastRecievedCommand);
-//                                System.out.println("HERE");
-//                                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-//                                alert.setTitle("Information Dialog");
-//                                alert.setHeaderText(null);
-//                                alert.setContentText("I have a great message for you!");
-//                                alert.showAndWait();
+                                WinWindow.showWindow(lastRecievedCommand.get());
+                                messageDisplayed = true;
                             }
                         }
                     });
                     try {
-                        Thread.sleep(40);
+                        Thread.sleep(50);
                     }
                     catch (Exception ex)
                     {
@@ -315,15 +370,8 @@ public class GameWindow extends Application {
                     }
                     animationOffset += offset;
                     if (animationOffset == (offset * 4)) animationOffset = 0;
-                    if ((lastRecievedCommand == -1) || (lastRecievedCommand == -2))
+                    if (((lastRecievedCommand.get() == -1) || (lastRecievedCommand.get() == -2)) && (messageDisplayed))
                     {
-                        System.out.println("HERE");
-//                        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-//                        alert.setTitle("Information Dialog");
-//                        alert.setHeaderText(null);
-//                        alert.setContentText("I have a great message for you!");
-//                        alert.showAndWait();
-                        //WinWindow.showWindow(lastRecievedCommand);
                         try
                         {
                             Thread.sleep(2500);
@@ -357,6 +405,105 @@ public class GameWindow extends Application {
         root.getChildren().addAll(addedObjects);
         primaryStage.setScene(scene);
         primaryStage.show();
+    }
+
+    public ImageView getImage(String lastmove, String viewDirection, Image img1, int x, int y)
+    {
+        ImageView result = new ImageView();
+        switch (lastmove)
+        {
+            case "RIGHT" :
+            {
+                ImageView person1 = new ImageView(img1);
+                person1.setViewport(new Rectangle2D(animationOffset, 0, 32, 32));
+                person1.setLayoutX(x);
+                person1.setLayoutY(y);
+                return person1;
+            }
+            case "LEFT" :
+            {
+                ImageView person1 = new ImageView(img1);
+                person1.setViewport(new Rectangle2D(animationOffset, 32, 32, 32));
+                person1.setLayoutX(x);
+                person1.setLayoutY(y);
+                return person1;
+
+            }
+            case "DOWN" :
+            {
+                ImageView person1 = new ImageView(img1);
+                person1.setViewport(new Rectangle2D(animationOffset, 64, 32, 32));
+                person1.setLayoutX(x);
+                person1.setLayoutY(y);
+                return person1;
+
+            }
+            case "UP" :
+            {
+                ImageView person1 = new ImageView(img1);
+                person1.setViewport(new Rectangle2D(animationOffset, 96, 32, 32));
+                person1.setLayoutX(x);
+                person1.setLayoutY(y);
+                return person1;
+            }
+            case "SHOOT" :
+            {
+                switch (viewDirection)
+                {
+                    case "RIGHT" :
+                    {
+                        ImageView person1 = new ImageView(img1);
+                        person1.setViewport(new Rectangle2D(animationOffset, 128, 32, 32));
+                        person1.setLayoutX(x);
+                        person1.setLayoutY(y);
+                        return person1;
+                    }
+                    case "LEFT" :
+                    {
+                        ImageView person1 = new ImageView(img1);
+                        person1.setViewport(new Rectangle2D(animationOffset, 160, 32, 32));
+                        person1.setLayoutX(x);
+                        person1.setLayoutY(y);
+                        return person1;
+                    }
+                    case "DOWN" :
+                    {
+                        ImageView person1 = new ImageView(img1);
+                        person1.setViewport(new Rectangle2D(animationOffset, 192, 32, 32));
+                        person1.setLayoutX(x);
+                        person1.setLayoutY(y);
+                        return person1;
+                    }
+                    case "UP" :
+                    {
+                        ImageView person1 = new ImageView(img1);
+                        person1.setViewport(new Rectangle2D(animationOffset, 224, 32, 32));
+                        person1.setLayoutX(x);
+                        person1.setLayoutY(y);
+                        return person1;
+                    }
+                }
+                break;
+            }
+            default:
+            {
+                ImageView person1 = new ImageView(img1);
+                int viewDirect = 0;
+                switch (viewDirection)
+                {
+                    case "RIGHT" : viewDirect = 0; break;
+                    case "LEFT" : viewDirect = 32; break;
+                    case "DOWN" : viewDirect = 64; break;
+                    case "UP" : viewDirect = 96; break;
+                }
+                person1.setViewport(new Rectangle2D(0, viewDirect, 32, 32));
+                person1.setLayoutX(x);
+                person1.setLayoutY(y);
+                return person1;
+            }
+
+        }
+        return  result;
     }
 
 }
@@ -399,7 +546,7 @@ class myThread extends Thread
                 int size = objInput.readInt();
                 if (size < 0)
                 {
-                    GameWindow.lastRecievedCommand = size;
+                    GameWindow.lastRecievedCommand.set(size);
                     return;
                 }
                 for(int i = 0; i < size; i++)
@@ -408,7 +555,7 @@ class myThread extends Thread
                     this.objectsOnField.add(obj1);
                     GameWindow.gl_objectsOnField.add(obj1);
                 }
-                Thread.sleep(160);
+                Thread.sleep(200);
             }
         }
         catch (Exception ex)

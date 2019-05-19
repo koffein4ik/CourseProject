@@ -77,3 +77,7 @@ public class Player {
         }
     }
 }
+
+class lastSymbol {
+    public int lastRecievedSymbol;
+}

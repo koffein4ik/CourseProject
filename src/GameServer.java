@@ -16,6 +16,8 @@ public class GameServer
     public static void main(String args[])
     {
         int offset = 32;
+        int totalPlayers = 0;
+        int currPlayerNumb = 0;
         String path = "E:\\CourseProject\\src\\Levels\\level1.txt";
         final int port = 11000;
         int width = 0;
@@ -78,19 +80,14 @@ public class GameServer
                     detectCollisions(monsters.get(i).id, mainField, offset);
 
                 }
-                //DataInputStream in = new DataInputStream(clientSocket.getInputStream());
-                //DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream());
-                //playerNumber = objIn.readUTF();
                 playerNumber = objIn.readByte();
                 command = objIn.readUTF();
-                //System.out.println(playerNumber);
-                //System.out.println(command);
                 if (command.equals("GetLevelPath"))
                 {
                     objOut.writeUTF(path);
                     //objOut.flush();
                     System.out.println("Sent");
-                    objectsOnFiled = mainField.getObjectPositions(objLastMoves, objViewDirection);
+                    objectsOnFiled = mainField.getObjectPositions(objLastMoves, objViewDirection, true);
                     int startID = 101;
                     boolean idGenerated = false;
                     while (!(idGenerated))
@@ -106,6 +103,7 @@ public class GameServer
                             }
                         }
                     }
+                    totalPlayers++;
                     objOut.writeByte(startID);
                     objOut.flush();
                     for (int i = 0; i < emptyCoordinates.size(); i++)
@@ -120,7 +118,7 @@ public class GameServer
                 }
                 if(!(command.equals("GetField")))
                     processCommand(mainField, playerNumber, command, offset, objLastMoves, false, objViewDirection, monsters);
-                objectsOnFiled = mainField.getObjectPositions(objLastMoves, objViewDirection);
+                objectsOnFiled = mainField.getObjectPositions(objLastMoves, objViewDirection, (currPlayerNumb == totalPlayers));
                 if ((monsters.size() > 0) && (!(losers.contains(playerNumber))))
                 {
                     objOut.writeInt(objectsOnFiled.size());
@@ -137,9 +135,10 @@ public class GameServer
                 {
                     objOut.writeObject(objectsOnFiled.get(i));
                 }
-                if (command.equals("GetField")) objLastMoves.clear();
-                //out.write(mainField.getOneDimensionalField(), 0, mainField.getOneDimensionalField().length);
                 objOut.flush();
+                currPlayerNumb++;
+                if ((command.equals("GetField")) && (currPlayerNumb > totalPlayers)) objLastMoves.clear();
+                if (currPlayerNumb > totalPlayers) currPlayerNumb = 0;
             }
         }
         catch (Exception ex)
@@ -181,7 +180,8 @@ public class GameServer
             case "SHOOT":
             {
                 playerShoot(playerNumb, objViewDirection.get(playerNumb), gameField, offset, mobsOnField);
-                objLastMoves.replace(playerNumb, "SHOOT");
+                objLastMoves.put(playerNumb, "SHOOT");
+                return;
             }
             default: return;
         }
@@ -623,7 +623,7 @@ class GameField {
         return emptySquares;
     }
 
-    public ArrayList<ObjToTransfer> getObjectPositions(Map<Byte, String> objLastMove, Map<Byte, String> objViewDirection)
+    public ArrayList<ObjToTransfer> getObjectPositions(Map<Byte, String> objLastMove, Map<Byte, String> objViewDirection, Boolean lastplayer)
     {
         ArrayList<ObjToTransfer> result = new ArrayList<ObjToTransfer>();
         for (int i = 0; i < this.height; i++)
@@ -631,14 +631,14 @@ class GameField {
             for (int j = 0; j < this.width; j++)
             {
                 byte currFieldValue = this.field[i][j];
-                if (((currFieldValue > 100) && (currFieldValue < 112)) || ((currFieldValue > 111) && (currFieldValue < 127)))  //УБРАТЬ Единицу
+                if ((currFieldValue > (byte)100) && (currFieldValue < (byte)127))
                 {
                     ObjToTransfer obj1 = new ObjToTransfer(currFieldValue, j, i);
                     if (objLastMove.containsKey(currFieldValue))
                     {
                         obj1.lastmove = objLastMove.get(currFieldValue);
-                        obj1.viewDirection = objLastMove.get(currFieldValue);
-                        objViewDirection.replace(currFieldValue, objLastMove.get(currFieldValue));
+                        obj1.viewDirection = objViewDirection.get(currFieldValue);
+                        //objViewDirection.replace(currFieldValue, objLastMove.get(currFieldValue));
                     }
                     else
                     {
