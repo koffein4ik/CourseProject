@@ -18,7 +18,7 @@ public class GameServer
         int offset = 32;
         int totalPlayers = 0;
         int currPlayerNumb = 0;
-        String path = "E:\\CourseProject\\src\\Levels\\level1.txt";
+        String path = "src/levels/level1.txt";
         final int port = 11000;
         int width = 0;
         int height = 0;
